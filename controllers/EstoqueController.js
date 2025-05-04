@@ -1,4 +1,4 @@
-import estoqueService from '../services/EstoqueService.js';
+import estoqueService from '../services/estoqueService.js';
 
 const EstoqueController = {
   listar: async (req, res) => {

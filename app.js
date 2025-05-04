@@ -21,6 +21,8 @@ import agendamentoRoutes from './routes/agendamentoRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import interesseRoutes from './routes/interesseRoutes.js';
+import depoimentoRoutes from './routes/depoimentoRoutes.js'; // Importando as rotas de depoimentos
+import contatoRoutes from './routes/contatoRoutes.js';
 
 // Inicializar app
 const app = express();
@@ -46,6 +48,8 @@ app.use('/', agendamentoRoutes);
 app.use('/', adminRoutes);
 app.use('/admin', adminRoutes); // Rota de admin (ex: /admin/admins)
 app.use('/api', interesseRoutes);
+app.use('/depoimentos', depoimentoRoutes); // Registrando as rotas de depoimentos
+app.use('/contato', contatoRoutes);
 
 // Rota raiz
 app.get('/', (req, res) => {

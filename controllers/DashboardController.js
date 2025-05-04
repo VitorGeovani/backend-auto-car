@@ -4,29 +4,32 @@ const DashboardController = {
   getStats: async (req, res) => {
     try {
       // Usar Promise.all para executar todas as consultas em paralelo
-      const [clientesResult, estoqueResult, interessesResult] = await Promise.all([
+      const [clientesResult, estoqueResult, interessesResult, depoimentosResult] = await Promise.all([
         // Consulta SQL direta para cada estatística
         db.query("SELECT COUNT(*) as total FROM usuarios"),
         db.query("SELECT COUNT(*) as total FROM estoque WHERE quantidade > 0"),
-        db.query("SELECT COUNT(*) as total FROM interesses")
+        db.query("SELECT COUNT(*) as total FROM interesses"),
+        db.query("SELECT COUNT(*) as total FROM depoimentos")
       ]);
       
       // Extrair os valores das consultas
       const clientes = clientesResult[0][0]?.total || 0;
       const estoque = estoqueResult[0][0]?.total || 0;
       const interesses = interessesResult[0][0]?.total || 0;
+      const depoimentos = depoimentosResult[0][0]?.total || 0;
       
       console.log('Estatísticas recuperadas com sucesso:', {
         clientes,
         estoque, 
-        interesses
+        interesses,
+        depoimentos
       });
       
       // Retornar estatísticas para o frontend
       res.json({
         clientes: clientes,
         estoque: estoque,
-        depoimentos: 0,
+        depoimentos: depoimentos,
         interesses: interesses,
         vendas: 0,
         agendamentos: 0
