@@ -123,10 +123,13 @@ const atualizar = async (id, carro) => {
 
 const excluir = async (id) => {
   try {
-    // Primeiro excluir as imagens relacionadas
+    // Primeiro excluir os interesses relacionados ao carro
+    await pool.execute('DELETE FROM interesses WHERE carro_id = ?', [id]);
+    
+    // Depois excluir as imagens relacionadas
     await pool.execute('DELETE FROM imagens WHERE carro_id = ?', [id]);
     
-    // Depois excluir o carro
+    // Por último, excluir o carro
     const query = 'DELETE FROM carros WHERE id = ?';
     await pool.execute(query, [id]);
     

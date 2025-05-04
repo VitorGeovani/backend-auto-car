@@ -44,6 +44,7 @@ app.use('/', estoqueRoutes);
 app.use('/imagens', imagemRoutes);
 app.use('/', agendamentoRoutes);
 app.use('/', adminRoutes);
+app.use('/admin', adminRoutes); // Rota de admin (ex: /admin/admins)
 app.use('/api', interesseRoutes);
 
 // Rota raiz
