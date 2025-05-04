@@ -53,6 +53,17 @@ const Interesse = {
     }
   },
 
+  buscarPorCarroId: async (carroId) => {
+    const sql = `SELECT * FROM interesses WHERE carro_id = ?`;
+    try {
+      const [rows] = await db.query(sql, [carroId]);
+      return rows;
+    } catch (error) {
+      console.error('Erro ao buscar interesses por carro_id:', error);
+      throw error;
+    }
+  },
+
   marcarComoLido: async (id) => {
     const sql = `UPDATE interesses SET lido = 1 WHERE id = ?`;
     try {

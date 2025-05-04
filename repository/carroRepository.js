@@ -1,257 +1,123 @@
 import pool from '../config/database.js';
 
-const buscarTodos = async () => {
+const listarTodos = async () => {
   try {
-    const query = `
-      SELECT c.*,
-        (SELECT GROUP_CONCAT(i.url) FROM imagens i WHERE i.carro_id = c.id) as imagens
+    const [rows] = await pool.query(`
+      SELECT c.*, cat.nome as categoria_nome
       FROM carros c
-      ORDER BY c.created_at DESC
-    `;
+      LEFT JOIN categorias cat ON c.categoria_id = cat.id
+      ORDER BY c.id DESC
+    `);
     
-    const [carros] = await pool.execute(query);
-    
-    // Converter string de imagens em array
-    return carros.map(carro => {
-      return {
-        ...carro,
-        imagens: carro.imagens ? carro.imagens.split(',') : []
-      };
-    });
+    return rows;
   } catch (error) {
-    console.error('Erro ao buscar todos os carros:', error);
+    console.error('Erro ao listar carros:', error);
     throw error;
   }
 };
 
 const buscarPorId = async (id) => {
   try {
-    const query = `
-      SELECT c.*,
-        (SELECT GROUP_CONCAT(i.url) FROM imagens i WHERE i.carro_id = c.id) as imagens
-      FROM carros c
+    const [rows] = await pool.query(`
+      SELECT c.*, cat.nome as categoria_nome 
+      FROM carros c 
+      LEFT JOIN categorias cat ON c.categoria_id = cat.id 
       WHERE c.id = ?
-    `;
+    `, [id]);
     
-    const [carros] = await pool.execute(query, [id]);
-    
-    if (carros.length === 0) {
-      return null;
-    }
-    
-    // Converter string de imagens em array
-    const carro = carros[0];
-    return {
-      ...carro,
-      imagens: carro.imagens ? carro.imagens.split(',') : []
-    };
+    return rows.length ? rows[0] : null;
   } catch (error) {
     console.error('Erro ao buscar carro por ID:', error);
     throw error;
   }
 };
 
-const inserir = async (carro) => {
+const listarAtivos = async () => {
   try {
-    const query = `
-      INSERT INTO carros 
-      (modelo, marca, ano, preco, descricao, quilometragem, cores, transmissao, combustivel, opcionais, categoria_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    const [rows] = await pool.query(`
+      SELECT c.*, cat.nome as categoria_nome
+      FROM carros c
+      LEFT JOIN categorias cat ON c.categoria_id = cat.id
+      WHERE c.ativo = TRUE
+      ORDER BY c.id DESC
+    `);
     
-    const [result] = await pool.execute(query, [
-      carro.modelo,
-      carro.marca,
-      carro.ano,
-      carro.preco,
-      carro.descricao,
-      carro.quilometragem,
-      carro.cores,
-      carro.transmissao,
-      carro.combustivel,
-      carro.opcionais,
-      carro.categoria_id
-    ]);
-    
-    return { id: result.insertId, ...carro };
+    return rows;
   } catch (error) {
-    console.error('Erro ao inserir carro:', error);
+    console.error('Erro ao listar carros ativos:', error);
     throw error;
   }
 };
 
-const atualizar = async (id, carro) => {
+const criar = async (carroData) => {
   try {
-    const query = `
-      UPDATE carros 
-      SET modelo = ?, 
-          marca = ?, 
-          ano = ?, 
-          preco = ?, 
-          descricao = ?, 
-          quilometragem = ?, 
-          cores = ?, 
-          transmissao = ?, 
-          combustivel = ?, 
-          opcionais = ?, 
-          categoria_id = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `;
+    const { 
+      modelo, marca, ano, quilometragem, cores, transmissao, 
+      combustivel, opcionais, preco, descricao, categoria_id, ativo 
+    } = carroData;
     
-    await pool.execute(query, [
-      carro.modelo,
-      carro.marca,
-      carro.ano,
-      carro.preco,
-      carro.descricao,
-      carro.quilometragem,
-      carro.cores,
-      carro.transmissao,
-      carro.combustivel,
-      carro.opcionais,
-      carro.categoria_id,
-      id
+    const [result] = await pool.query(`
+      INSERT INTO carros (
+        modelo, marca, ano, quilometragem, cores, 
+        transmissao, combustivel, opcionais, preco, 
+        descricao, categoria_id, ativo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      modelo, marca, ano, quilometragem, cores, 
+      transmissao, combustivel, opcionais, preco, 
+      descricao, categoria_id, ativo
     ]);
     
-    return { id: parseInt(id), ...carro };
+    const id = result.insertId;
+    return { id, ...carroData };
+  } catch (error) {
+    console.error('Erro ao criar carro:', error);
+    throw error;
+  }
+};
+
+const atualizar = async (id, carroData) => {
+  try {
+    const { 
+      modelo, marca, ano, quilometragem, cores, transmissao, 
+      combustivel, opcionais, preco, descricao, categoria_id, ativo 
+    } = carroData;
+    
+    await pool.query(`
+      UPDATE carros SET
+        modelo = ?, marca = ?, ano = ?, quilometragem = ?, 
+        cores = ?, transmissao = ?, combustivel = ?, 
+        opcionais = ?, preco = ?, descricao = ?, 
+        categoria_id = ?, ativo = ?
+      WHERE id = ?
+    `, [
+      modelo, marca, ano, quilometragem, cores, 
+      transmissao, combustivel, opcionais, preco, 
+      descricao, categoria_id, ativo, id
+    ]);
+    
+    return { id: parseInt(id), ...carroData };
   } catch (error) {
     console.error('Erro ao atualizar carro:', error);
     throw error;
   }
 };
 
-const excluir = async (id) => {
+const deletar = async (id) => {
   try {
-    // Primeiro excluir os interesses relacionados ao carro
-    await pool.execute('DELETE FROM interesses WHERE carro_id = ?', [id]);
-    
-    // Depois excluir as imagens relacionadas
-    await pool.execute('DELETE FROM imagens WHERE carro_id = ?', [id]);
-    
-    // Por último, excluir o carro
-    const query = 'DELETE FROM carros WHERE id = ?';
-    await pool.execute(query, [id]);
-    
+    await pool.query('DELETE FROM carros WHERE id = ?', [id]);
     return { id: parseInt(id) };
   } catch (error) {
-    console.error('Erro ao excluir carro:', error);
+    console.error('Erro ao deletar carro:', error);
     throw error;
   }
-};
-
-const buscarPorCategoria = async (categoriaId) => {
-  try {
-    const query = `
-      SELECT c.*,
-        (SELECT GROUP_CONCAT(i.url) FROM imagens i WHERE i.carro_id = c.id) as imagens
-      FROM carros c
-      WHERE c.categoria_id = ?
-      ORDER BY c.created_at DESC
-    `;
-    
-    const [carros] = await pool.execute(query, [categoriaId]);
-    
-    return carros.map(carro => {
-      return {
-        ...carro,
-        imagens: carro.imagens ? carro.imagens.split(',') : []
-      };
-    });
-  } catch (error) {
-    console.error('Erro ao buscar carros por categoria:', error);
-    throw error;
-  }
-};
-
-const buscarPorFiltros = async (filtros) => {
-  try {
-    let query = `
-      SELECT c.*,
-        (SELECT GROUP_CONCAT(i.url) FROM imagens i WHERE i.carro_id = c.id) as imagens
-      FROM carros c
-      WHERE 1=1
-    `;
-    
-    const params = [];
-    
-    if (filtros.marca) {
-      query += ' AND c.marca LIKE ?';
-      params.push(`%${filtros.marca}%`);
-    }
-    
-    if (filtros.modelo) {
-      query += ' AND c.modelo LIKE ?';
-      params.push(`%${filtros.modelo}%`);
-    }
-    
-    if (filtros.anoMin) {
-      query += ' AND c.ano >= ?';
-      params.push(parseInt(filtros.anoMin));
-    }
-    
-    if (filtros.anoMax) {
-      query += ' AND c.ano <= ?';
-      params.push(parseInt(filtros.anoMax));
-    }
-    
-    if (filtros.precoMin) {
-      query += ' AND c.preco >= ?';
-      params.push(parseFloat(filtros.precoMin));
-    }
-    
-    if (filtros.precoMax) {
-      query += ' AND c.preco <= ?';
-      params.push(parseFloat(filtros.precoMax));
-    }
-    
-    if (filtros.categoria_id) {
-      query += ' AND c.categoria_id = ?';
-      params.push(parseInt(filtros.categoria_id));
-    }
-
-    if (filtros.combustivel) {
-      query += ' AND c.combustivel = ?';
-      params.push(filtros.combustivel);
-    }
-
-    if (filtros.transmissao) {
-      query += ' AND c.transmissao = ?';
-      params.push(filtros.transmissao);
-    }
-    
-    query += ' ORDER BY c.created_at DESC';
-    
-    const [carros] = await pool.execute(query, params);
-    
-    return carros.map(carro => {
-      return {
-        ...carro,
-        imagens: carro.imagens ? carro.imagens.split(',') : []
-      };
-    });
-  } catch (error) {
-    console.error('Erro ao buscar carros por filtros:', error);
-    throw error;
-  }
-};
-
-export {
-  buscarTodos,
-  buscarPorId,
-  inserir,
-  atualizar,
-  excluir as deletar,
-  buscarPorCategoria,
-  buscarPorFiltros
 };
 
 export default {
-  buscarTodos,
+  listarTodos,
   buscarPorId,
-  inserir,
+  listarAtivos,
+  criar,
   atualizar,
-  deletar: excluir,
-  buscarPorCategoria,
-  buscarPorFiltros
+  deletar
 };
