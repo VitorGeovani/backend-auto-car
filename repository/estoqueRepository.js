@@ -48,9 +48,27 @@ const buscarPorCarroId = async (carro_id) => {
   }
 };
 
+// Método novo: Listar apenas carros disponíveis em estoque
+const listarDisponiveis = async () => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT e.*, c.modelo, c.marca, c.ano, c.preco
+      FROM estoque e
+      INNER JOIN carros c ON e.carro_id = c.id
+      WHERE e.quantidade > 0 AND c.ativo = TRUE
+      ORDER BY c.marca, c.modelo
+    `);
+    
+    return rows;
+  } catch (error) {
+    console.error('Erro ao listar estoque disponível:', error);
+    throw error;
+  }
+};
+
 const adicionar = async (itemData) => {
   try {
-    const { carro_id, quantidade, localizacao } = itemData;
+    const { carro_id, quantidade = 1, localizacao = 'Matriz' } = itemData;
     
     const [result] = await pool.query(`
       INSERT INTO estoque (carro_id, quantidade, localizacao)
@@ -58,7 +76,7 @@ const adicionar = async (itemData) => {
     `, [carro_id, quantidade, localizacao]);
     
     const id = result.insertId;
-    return { id, ...itemData };
+    return { id, carro_id, quantidade, localizacao };
   } catch (error) {
     console.error('Erro ao adicionar item ao estoque:', error);
     throw error;
@@ -84,6 +102,74 @@ const atualizar = async (id, itemData) => {
   }
 };
 
+// Método novo: Atualizar apenas a quantidade
+const atualizarQuantidade = async (carroId, quantidade) => {
+  try {
+    const [result] = await pool.query(`
+      UPDATE estoque 
+      SET quantidade = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE carro_id = ?
+    `, [quantidade, carroId]);
+    
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error('Erro ao atualizar quantidade no estoque:', error);
+    throw error;
+  }
+};
+
+// Método novo: Reduzir quantidade (para vendas)
+const reduzirQuantidade = async (carroId, quantidade = 1) => {
+  try {
+    const [result] = await pool.query(`
+      UPDATE estoque 
+      SET quantidade = quantidade - ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE carro_id = ? AND quantidade >= ?
+    `, [quantidade, carroId, quantidade]);
+    
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error('Erro ao reduzir quantidade no estoque:', error);
+    throw error;
+  }
+};
+
+// Método novo: Aumentar quantidade (para reposição)
+const aumentarQuantidade = async (carroId, quantidade = 1) => {
+  try {
+    const [result] = await pool.query(`
+      UPDATE estoque 
+      SET quantidade = quantidade + ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE carro_id = ?
+    `, [quantidade, carroId]);
+    
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error('Erro ao aumentar quantidade no estoque:', error);
+    throw error;
+  }
+};
+
+// Método novo: Verificar disponibilidade
+const verificarDisponibilidade = async (carroId, quantidadeNecessaria = 1) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT quantidade >= ? as disponivel 
+      FROM estoque 
+      WHERE carro_id = ?
+    `, [quantidadeNecessaria, carroId]);
+    
+    if (!rows.length) return false;
+    return rows[0].disponivel === 1;
+  } catch (error) {
+    console.error('Erro ao verificar disponibilidade no estoque:', error);
+    throw error;
+  }
+};
+
 const deletar = async (id) => {
   try {
     await pool.query('DELETE FROM estoque WHERE id = ?', [id]);
@@ -98,7 +184,12 @@ export default {
   listarTodos,
   buscarPorId,
   buscarPorCarroId,
+  listarDisponiveis,
   adicionar,
   atualizar,
+  atualizarQuantidade,
+  reduzirQuantidade,
+  aumentarQuantidade,
+  verificarDisponibilidade,
   deletar
 };

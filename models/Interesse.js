@@ -63,6 +63,79 @@ const Interesse = {
       throw error;
     }
   },
+  
+  buscarPorEmail: async (email) => {
+    const sql = `
+      SELECT i.*, c.marca, c.modelo, c.ano
+      FROM interesses i
+      JOIN carros c ON i.carro_id = c.id
+      WHERE i.email = ?
+      ORDER BY i.data_registro DESC
+    `;
+    try {
+      const [rows] = await db.query(sql, [email]);
+      return rows;
+    } catch (error) {
+      console.error('Erro ao buscar interesses por email:', error);
+      throw error;
+    }
+  },
+
+  listarNaoLidos: async () => {
+    const sql = `
+      SELECT i.*, c.marca, c.modelo, c.ano
+      FROM interesses i
+      JOIN carros c ON i.carro_id = c.id
+      WHERE i.lido = FALSE
+      ORDER BY i.data_registro DESC
+    `;
+    try {
+      const [results] = await db.query(sql);
+      return results;
+    } catch (error) {
+      console.error('Erro ao listar interesses não lidos:', error);
+      throw error;
+    }
+  },
+  
+  contarNaoLidos: async () => {
+    const sql = `SELECT COUNT(*) as total FROM interesses WHERE lido = FALSE`;
+    try {
+      const [result] = await db.query(sql);
+      return result[0].total;
+    } catch (error) {
+      console.error('Erro ao contar interesses não lidos:', error);
+      throw error;
+    }
+  },
+
+  contarPorCarro: async (carroId) => {
+    const sql = `SELECT COUNT(*) as total FROM interesses WHERE carro_id = ?`;
+    try {
+      const [result] = await db.query(sql, [carroId]);
+      return result[0].total;
+    } catch (error) {
+      console.error('Erro ao contar interesses por carro:', error);
+      throw error;
+    }
+  },
+
+  listarPorPeriodo: async (dataInicio, dataFim) => {
+    const sql = `
+      SELECT i.*, c.marca, c.modelo, c.ano
+      FROM interesses i
+      JOIN carros c ON i.carro_id = c.id
+      WHERE i.data_registro BETWEEN ? AND ?
+      ORDER BY i.data_registro DESC
+    `;
+    try {
+      const [results] = await db.query(sql, [dataInicio, dataFim]);
+      return results;
+    } catch (error) {
+      console.error('Erro ao listar interesses por período:', error);
+      throw error;
+    }
+  },
 
   marcarComoLido: async (id) => {
     const sql = `UPDATE interesses SET lido = 1 WHERE id = ?`;
@@ -71,6 +144,19 @@ const Interesse = {
       return true;
     } catch (error) {
       console.error('Erro ao marcar interesse como lido:', error);
+      throw error;
+    }
+  },
+  
+  marcarMultiplosComoLido: async (ids) => {
+    if (!ids || !ids.length) return false;
+    
+    const sql = `UPDATE interesses SET lido = 1 WHERE id IN (?)`;
+    try {
+      await db.query(sql, [ids]);
+      return true;
+    } catch (error) {
+      console.error('Erro ao marcar múltiplos interesses como lidos:', error);
       throw error;
     }
   },

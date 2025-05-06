@@ -1,6 +1,6 @@
 import connection from '../config/database.js';
 
-const Depoimento = {
+export default {
   buscarTodos: async (apenasAprovados = null) => {
     try {
       let query = 'SELECT * FROM depoimentos';
@@ -74,7 +74,7 @@ const Depoimento = {
     }
   },
   
-  criar: async (depoimento) => {
+  inserir: async (depoimento) => {
     try {
       const { nome_cliente, email, cidade, texto, avaliacao = 5, aprovado = false } = depoimento;
       
@@ -182,7 +182,7 @@ const Depoimento = {
     }
   },
   
-  excluir: async (id) => {
+  deletar: async (id) => {
     try {
       await connection.query('DELETE FROM depoimentos WHERE id = ?', [id]);
       return true;
@@ -192,5 +192,3 @@ const Depoimento = {
     }
   }
 };
-
-export default Depoimento;
